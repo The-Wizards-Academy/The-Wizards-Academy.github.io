@@ -3,13 +3,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const loginForm = document.getElementById("login-form");
     const step1 = document.getElementById("step-1");
     const step2 = document.getElementById("step-2");
-    const content = document.getElementById("content");
     const message = document.getElementById("message");
     const usernameInput = document.getElementById("username");
     const passwordInput = document.getElementById("password");
     const spinner = document.getElementById("spinner");
-    const logoutBtn = document.getElementById("logout-btn");
-    const welcomeUsername = document.getElementById("welcome-username");
 
     // --- State ---
     let verifiedUsername = "";
@@ -20,18 +17,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // --- Event Listeners ---
     loginForm.addEventListener("submit", handleFormSubmit);
-    logoutBtn.addEventListener("click", logout);
 
     // --- Functions ---
 
     /**
-     * Checks for an active session in sessionStorage.
+     * Checks for an active session and redirects to the dashboard if found.
      */
     function checkSession() {
-        const sessionUser = sessionStorage.getItem("loggedInUser");
-        if (sessionUser) {
-            verifiedUsername = sessionUser;
-            showContent();
+        if (sessionStorage.getItem("loggedInUser")) {
+            window.location.href = "dashboard.html";
         }
     }
 
@@ -77,8 +71,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 setLoading(false);
                 setMessage("Please enter your password.", "success");
                 verifiedUsername = username;
-                step1.classList.add("hidden");
-                step2.classList.remove("hidden");
+                step1.classList.add("fade-out");
+                setTimeout(() => {
+                    step1.classList.add("hidden");
+                    step1.classList.remove("fade-out");
+                    step2.classList.remove("hidden");
+                    step2.classList.add("fade-in");
+                }, 500);
                 usernameInput.disabled = true;
             }, 1000);
 
@@ -89,15 +88,23 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     /**
-     * Finds if a user has forked the repository.
+     * Finds if a user has forked the repository, using cache if available.
      */
     async function findUserFork(username) {
+        const cachedForks = sessionStorage.getItem("forksCache");
+        if (cachedForks) {
+            const forks = JSON.parse(cachedForks);
+            const userFork = forks.find(fork => fork.owner.login.toLowerCase() === username.toLowerCase());
+            if(userFork) return userFork;
+        }
+
         const forkUrl = `https://api.github.com/repos/${CONFIG.ORG_NAME}/${CONFIG.REPO_NAME}/forks`;
         const response = await fetch(forkUrl);
         if (!response.ok) {
-            handleApiError(response, "Could not check repo forks.");
+            handleApiError(response, `Could not check repo forks. Status: ${response.status}`);
         }
         const forks = await response.json();
+        sessionStorage.setItem("forksCache", JSON.stringify(forks));
         return forks.find(fork => fork.owner.login.toLowerCase() === username.toLowerCase());
     }
 
@@ -108,13 +115,13 @@ document.addEventListener("DOMContentLoaded", () => {
         const hashUrl = `https://raw.githubusercontent.com/${username}/${CONFIG.REPO_NAME}/main/${CONFIG.CARD_FILE_PATH}`;
         const response = await fetch(hashUrl);
         if (!response.ok) {
-            throw new Error("Could not find `wizard-card.json`. Did you create it in your fork?");
+            handleApiError(response, `Could not find wizard-card.json. Status: ${response.status}`);
         }
         return await response.json();
     }
 
     /**
-     * Step 2: Checks the entered password against the stored hash.
+     * Step 2: Checks the entered password and redirects to the dashboard.
      */
     async function checkPassword() {
         const password = passwordInput.value;
@@ -127,10 +134,10 @@ document.addEventListener("DOMContentLoaded", () => {
             const inputHash = await sha256(password);
             if (inputHash === storedHash) {
                 sessionStorage.setItem("loggedInUser", verifiedUsername);
+                setMessage("Access Granted! Redirecting...", "success");
                 setTimeout(() => {
-                    setLoading(false);
-                    showContent();
-                }, 500);
+                    window.location.href = "dashboard.html";
+                }, 1000);
             } else {
                 throw new Error("Password incorrect.");
             }
@@ -147,35 +154,12 @@ document.addEventListener("DOMContentLoaded", () => {
     function handleApiError(response, defaultMessage) {
         if (response.status === 403) {
             throw new Error("GitHub API rate limit exceeded. Please try again later.");
+        } else if (response.status === 404) {
+            throw new Error("The requested resource was not found. Please check the configuration.");
+        } else if (response.status >= 500) {
+            throw new Error("A server error occurred. Please try again later.");
         }
         throw new Error(defaultMessage);
-    }
-
-    /**
-     * Shows the main content area.
-     */
-    function showContent() {
-        welcomeUsername.textContent = verifiedUsername;
-        loginForm.classList.add("hidden");
-        message.classList.add("hidden");
-        content.classList.remove("hidden");
-    }
-
-    /**
-     * Logs the user out.
-     */
-    function logout() {
-        sessionStorage.removeItem("loggedInUser");
-        verifiedUsername = "";
-        storedHash = "";
-        usernameInput.value = "";
-        passwordInput.value = "";
-        usernameInput.disabled = false;
-        content.classList.add("hidden");
-        loginForm.classList.remove("hidden");
-        step1.classList.remove("hidden");
-        step2.classList.add("hidden");
-        setMessage("You have been logged out.");
     }
 
     /**

@@ -18,6 +18,7 @@ body {
     text-align: center;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     transition: transform 0.3s ease-in-out;
+    overflow: hidden; /* To contain the animations */
 }
 
 .profile-logo {
@@ -72,15 +73,6 @@ button:hover {
     background-color: #6eefff;
 }
 
-#logout-btn {
-    background-color: #ff4e4e;
-    color: #fff;
-}
-
-#logout-btn:hover {
-    background-color: #ff6e6e;
-}
-
 #message {
     margin-top: 20px;
     font-size: 0.9em;
@@ -114,4 +106,23 @@ button:hover {
 
 @keyframes spin {
     to { transform: rotate(360deg); }
+}
+
+/* --- Animations --- */
+.fade-in {
+    animation: fadeIn 0.5s ease-in-out forwards;
+}
+
+.fade-out {
+    animation: fadeOut 0.5s ease-in-out forwards;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeOut {
+    from { opacity: 1; transform: translateY(0); }
+    to { opacity: 0; transform: translateY(-10px); }
 }
