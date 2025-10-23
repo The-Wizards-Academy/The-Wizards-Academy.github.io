@@ -1,4 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
+    console.log("DOM fully loaded and parsed");
+
     // --- DOM Elements ---
     const loginForm = document.getElementById("login-form");
     const step1 = document.getElementById("step-1");
@@ -8,6 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const passwordInput = document.getElementById("password");
     const spinner = document.getElementById("spinner");
     const demoBtn = document.getElementById("demo-btn");
+    const checkUserBtn = document.getElementById("check-user-btn");
 
     // --- State ---
     let verifiedUsername = "";
@@ -19,6 +22,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // --- Event Listeners ---
     loginForm.addEventListener("submit", handleFormSubmit);
     demoBtn.addEventListener("click", startDemoMode);
+    checkUserBtn.addEventListener("click", handleFormSubmit);
 
     // --- Functions ---
 
@@ -26,7 +30,9 @@ document.addEventListener("DOMContentLoaded", () => {
      * Checks for an active session and redirects to the dashboard if found.
      */
     function checkSession() {
+        console.log("Checking for active session...");
         if (sessionStorage.getItem("loggedInUser")) {
+            console.log("Active session found. Redirecting to dashboard.");
             window.location.href = "dashboard.html";
         }
     }
@@ -35,10 +41,13 @@ document.addEventListener("DOMContentLoaded", () => {
      * Handles the form submission for both steps.
      */
     async function handleFormSubmit(e) {
+        console.log("Form submitted or button clicked.");
         e.preventDefault();
         if (!verifiedUsername) {
+            console.log("Calling checkUserAndFork()...");
             await checkUserAndFork();
         } else {
+            console.log("Calling checkPassword()...");
             await checkPassword();
         }
     }
@@ -47,6 +56,7 @@ document.addEventListener("DOMContentLoaded", () => {
      * Starts the demo mode.
      */
     function startDemoMode() {
+        console.log("Starting demo mode...");
         verifiedUsername = "demo-user";
         // SHA-256 hash for "password"
         storedHash = "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8";
@@ -68,8 +78,12 @@ document.addEventListener("DOMContentLoaded", () => {
      * Step 1: Checks if the user has forked the repository and fetches the hash.
      */
     async function checkUserAndFork() {
+        console.log("Inside checkUserAndFork()...");
         const username = usernameInput.value;
-        if (!username) return;
+        if (!username) {
+            console.log("Username is empty. Returning.");
+            return;
+        }
 
         setLoading(true);
         setMessage("Checking initiate status...");
@@ -114,13 +128,18 @@ document.addEventListener("DOMContentLoaded", () => {
      * Finds if a user has forked the repository, using cache if available.
      */
     async function findUserFork(username) {
+        console.log(`Finding fork for user: ${username}`);
         const cachedForks = sessionStorage.getItem("forksCache");
         if (cachedForks) {
             const forks = JSON.parse(cachedForks);
             const userFork = forks.find(fork => fork.owner.login.toLowerCase() === username.toLowerCase());
-            if(userFork) return userFork;
+            if(userFork) {
+                console.log("Fork found in cache.");
+                return userFork;
+            }
         }
 
+        console.log("Fork not in cache. Fetching from API...");
         const forkUrl = `https://api.github.com/repos/${CONFIG.ORG_NAME}/${CONFIG.REPO_NAME}/forks`;
         const response = await fetch(forkUrl);
         if (!response.ok) {
@@ -135,6 +154,7 @@ document.addEventListener("DOMContentLoaded", () => {
      * Fetches the wizard-card.json from the user's fork.
      */
     async function fetchCardData(username) {
+        console.log(`Fetching card data for user: ${username}`);
         const hashUrl = `https://raw.githubusercontent.com/${username}/${CONFIG.REPO_NAME}/main/${CONFIG.CARD_FILE_PATH}`;
         const response = await fetch(hashUrl);
         if (!response.ok) {
@@ -147,8 +167,12 @@ document.addEventListener("DOMContentLoaded", () => {
      * Step 2: Checks the entered password and redirects to the dashboard.
      */
     async function checkPassword() {
+        console.log("Inside checkPassword()...");
         const password = passwordInput.value;
-        if (!password) return;
+        if (!password) {
+            console.log("Password is empty. Returning.");
+            return;
+        }
 
         setLoading(true);
         setMessage("Verifying password...");
@@ -175,6 +199,7 @@ document.addEventListener("DOMContentLoaded", () => {
      * Handles API errors.
      */
     function handleApiError(response, defaultMessage) {
+        console.error(`API Error: ${response.status} - ${defaultMessage}`);
         if (response.status === 403) {
             throw new Error("GitHub API rate limit exceeded. Please try again later.");
         } else if (response.status === 404) {
