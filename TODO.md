@@ -17,7 +17,7 @@
 - [x] Add a "Logout" button that resets the application state.
 - [x] Implement a simple session mechanism using `sessionStorage` to keep the user logged in on page refresh.
 - [x] Design and build a proper dashboard page to be displayed after a successful login.
-- [ ] Fetch and display user data from `wizard-card.json` on the dashboard.
+- [x] Fetch and display user data from `wizard-card.json` on the dashboard.
 - [x] Add a "Back" button on the password step to allow the user to change the GitHub username. (JS logic implemented, HTML button needs to be added)
 
 ## Housekeeping

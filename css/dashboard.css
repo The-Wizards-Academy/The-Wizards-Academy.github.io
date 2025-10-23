@@ -52,4 +52,48 @@ body {
 .dashboard-main {
     padding: 40px;
     text-align: center;
+    flex-grow: 1; /* Allows the main content to fill available space */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.dashboard-main h2 {
+    margin-bottom: 30px;
+}
+
+.wizard-card-container {
+    width: 100%;
+    max-width: 400px;
+}
+
+.wizard-card {
+    background-color: #1E1E1E;
+    border: 1px solid #333;
+    border-radius: 10px;
+    padding: 25px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    text-align: left;
+}
+
+.wizard-image {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    border: 3px solid #444;
+    display: block;
+    margin: 0 auto 20px auto;
+}
+
+.wizard-name {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 1.8em;
+}
+
+.wizard-attributes {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
 }
