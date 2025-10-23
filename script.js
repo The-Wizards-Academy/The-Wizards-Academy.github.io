@@ -1,11 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-    
-    // --- Configuration ---
-    const ORG_NAME = "The-Wizards-Academy";
-    const REPO_NAME = "wizards-card-repo";
-    const CARD_FILE_PATH = "wizard-card.json";
-    // ---
-    
+    // --- DOM Elements ---
     const loginForm = document.getElementById("login-form");
     const step1 = document.getElementById("step-1");
     const step2 = document.getElementById("step-2");
@@ -13,116 +7,195 @@ document.addEventListener("DOMContentLoaded", () => {
     const message = document.getElementById("message");
     const usernameInput = document.getElementById("username");
     const passwordInput = document.getElementById("password");
+    const spinner = document.getElementById("spinner");
+    const logoutBtn = document.getElementById("logout-btn");
+    const welcomeUsername = document.getElementById("welcome-username");
 
+    // --- State ---
     let verifiedUsername = "";
     let storedHash = "";
 
-    // Handle form submission
-    loginForm.addEventListener("submit", async (e) => {
-        e.preventDefault();
+    // --- Initialization ---
+    checkSession();
 
-        if (!verifiedUsername) {
-            // Step 1: Check Username and Fork
-            await checkUserAndFork();
-        } else {
-            // Step 2: Check Password
-            await checkPassword();
-        }
-    });
+    // --- Event Listeners ---
+    loginForm.addEventListener("submit", handleFormSubmit);
+    logoutBtn.addEventListener("click", logout);
+
+    // --- Functions ---
 
     /**
-     * Step 1: Check if the user exists and has forked the repo.
+     * Checks for an active session in sessionStorage.
+     */
+    function checkSession() {
+        const sessionUser = sessionStorage.getItem("loggedInUser");
+        if (sessionUser) {
+            verifiedUsername = sessionUser;
+            showContent();
+        }
+    }
+
+    /**
+     * Handles the form submission for both steps.
+     */
+    async function handleFormSubmit(e) {
+        e.preventDefault();
+        if (!verifiedUsername) {
+            await checkUserAndFork();
+        } else {
+            await checkPassword();
+        }
+    }
+
+    /**
+     * Step 1: Checks if the user has forked the repository and fetches the hash.
      */
     async function checkUserAndFork() {
         const username = usernameInput.value;
         if (!username) return;
 
-        setLoadingMessage("Checking initiate status...");
+        setLoading(true, "Checking initiate status...");
 
         try {
-            // 1. Check if the user has forked the repo
-            const forkUrl = `https://api.github.com/repos/${ORG_NAME}/${REPO_NAME}/forks`;
-            const forksResponse = await fetch(forkUrl);
-            if (!forksResponse.ok) throw new Error("Could not check repo forks.");
-            
-            const forks = await forksResponse.json();
-            const userFork = forks.find(fork => fork.owner.login.toLowerCase() === username.toLowerCase());
-
+            const userFork = await findUserFork(username);
             if (!userFork) {
                 throw new Error("Initiate not found. Have you forked the Wizards Card repo?");
             }
 
-            // 2. If fork exists, fetch the password hash from their repo
-            const hashUrl = `https://raw.githubusercontent.com/${username}/${REPO_NAME}/main/${CARD_FILE_PATH}`;
-            const hashResponse = await fetch(hashUrl);
-            if (!hashResponse.ok) {
-                throw new Error("Could not find `wizard-card.json`. Did you create it in your fork?");
-            }
-            
-            const cardData = await hashResponse.json();
-            storedHash = cardData.hash;
-            
-            if (!storedHash) {
+            const cardData = await fetchCardData(username);
+            if (!cardData.hash) {
                 throw new Error("`wizard-card.json` is malformed. No hash found.");
             }
+            storedHash = cardData.hash;
 
             // Success! Move to step 2
-            setLoadingMessage("Initiate found. Please enter your password.", "success");
-            verifiedUsername = username; // Lock in the username
+            setLoading(false, "Initiate found. Please enter your password.", "success");
+            verifiedUsername = username;
             step1.classList.add("hidden");
             step2.classList.remove("hidden");
-            usernameInput.disabled = true; // Disable the username field
+            usernameInput.disabled = true;
 
         } catch (error) {
-            setLoadingMessage(error.message, "error");
+            setLoading(false, error.message, "error");
         }
     }
 
     /**
-     * Step 2: Check the entered password against the fetched hash.
+     * Finds if a user has forked the repository.
+     */
+    async function findUserFork(username) {
+        const forkUrl = `https://api.github.com/repos/${CONFIG.ORG_NAME}/${CONFIG.REPO_NAME}/forks`;
+        const response = await fetch(forkUrl);
+        if (!response.ok) {
+            handleApiError(response, "Could not check repo forks.");
+        }
+        const forks = await response.json();
+        return forks.find(fork => fork.owner.login.toLowerCase() === username.toLowerCase());
+    }
+
+    /**
+     * Fetches the wizard-card.json from the user's fork.
+     */
+    async function fetchCardData(username) {
+        const hashUrl = `https://raw.githubusercontent.com/${username}/${CONFIG.REPO_NAME}/main/${CONFIG.CARD_FILE_PATH}`;
+        const response = await fetch(hashUrl);
+        if (!response.ok) {
+            throw new Error("Could not find `wizard-card.json`. Did you create it in your fork?");
+        }
+        return await response.json();
+    }
+
+    /**
+     * Step 2: Checks the entered password against the stored hash.
      */
     async function checkPassword() {
         const password = passwordInput.value;
         if (!password) return;
 
-        setLoadingMessage("Verifying password...");
+        setLoading(true, "Verifying password...");
 
         try {
-            // Hash the password the user just typed
             const inputHash = await sha256(password);
-
-            // Compare!
             if (inputHash === storedHash) {
-                // SUCCESS!
-                setLoadingMessage("Access Granted.", "success");
-                loginForm.classList.add("hidden");
-                content.classList.remove("hidden");
+                sessionStorage.setItem("loggedInUser", verifiedUsername);
+                setLoading(false);
+                showContent();
             } else {
-                // Failure
                 throw new Error("Password incorrect.");
             }
-
         } catch (error) {
-            setLoadingMessage(error.message, "error");
+            setLoading(false, error.message, "error");
+            passwordInput.value = "";
         }
     }
 
-    // --- Helper Functions ---
-
-    function setLoadingMessage(msg, type = "") {
-        message.textContent = msg;
-        message.className = type; // "success" or "error"
+    /**
+     * Handles API errors.
+     */
+    function handleApiError(response, defaultMessage) {
+        if (response.status === 403) {
+            throw new Error("GitHub API rate limit exceeded. Please try again later.");
+        }
+        throw new Error(defaultMessage);
     }
 
     /**
-     * Hashes a string using the built-in Web Crypto API (SHA-256).
-     * Returns a hex string.
+     * Shows the main content area.
+     */
+    function showContent() {
+        welcomeUsername.textContent = verifiedUsername;
+        loginForm.classList.add("hidden");
+        message.classList.add("hidden");
+        content.classList.remove("hidden");
+    }
+
+    /**
+     * Logs the user out.
+     */
+    function logout() {
+        sessionStorage.removeItem("loggedInUser");
+        verifiedUsername = "";
+        storedHash = "";
+        usernameInput.value = "";
+        passwordInput.value = "";
+        usernameInput.disabled = false;
+        content.classList.add("hidden");
+        loginForm.classList.remove("hidden
+        step1.classList.remove("hidden");
+        step2.classList.add("hidden");
+        setMessage("You have been logged out.");
+    }
+
+    /**
+     * Sets the loading state and message.
+     */
+    function setLoading(isLoading, msg = "", type = "") {
+        if (isLoading) {
+            spinner.classList.remove("hidden");
+            loginForm.classList.add("hidden");
+        } else {
+            spinner.classList.add("hidden");
+            loginForm.classList.remove("hidden");
+        }
+        setMessage(msg, type);
+    }
+
+    /**
+     * Sets the message text and style.
+     */
+    function setMessage(msg, type = "") {
+        message.textContent = msg;
+        message.className = type;
+        message.classList.remove("hidden");
+    }
+
+    /**
+     * Hashes a string using SHA-256.
      */
     async function sha256(message) {
         const msgBuffer = new TextEncoder().encode(message);
         const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
         const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const hashHex = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
-        return hashHex;
+        return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
     }
 });
