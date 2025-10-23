@@ -1,8 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("DOM fully loaded and parsed");
-
     // --- DOM Elements ---
-    const loginForm = document.getElementById("login-form");
+    const loginForm = document.getElementById("login-form"); // Main form for both steps
     const step1 = document.getElementById("step-1");
     const step2 = document.getElementById("step-2");
     const message = document.getElementById("message");
@@ -11,7 +9,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const spinner = document.getElementById("spinner");
     const demoBtn = document.getElementById("demo-btn");
     const checkUserBtn = document.getElementById("check-user-btn");
-
+    const backToUsernameBtn = document.getElementById("back-to-username-btn"); // New: Back button for step 2
+    
     // --- State ---
     let verifiedUsername = "";
     let storedHash = "";
@@ -22,32 +21,31 @@ document.addEventListener("DOMContentLoaded", () => {
     // --- Event Listeners ---
     loginForm.addEventListener("submit", handleFormSubmit);
     demoBtn.addEventListener("click", startDemoMode);
-    checkUserBtn.addEventListener("click", handleFormSubmit);
+    checkUserBtn.addEventListener("click", handleFormSubmit); // Submits step 1
+    if (backToUsernameBtn) {
+        backToUsernameBtn.addEventListener("click", goBackToUsernameStep); // New: Back button listener
+    }
 
     // --- Functions ---
 
     /**
      * Checks for an active session and redirects to the dashboard if found.
      */
-    function checkSession() {
-        console.log("Checking for active session...");
+    function checkSession() { // JSDoc: Checks for an active session and redirects to the dashboard if found.
         if (sessionStorage.getItem("loggedInUser")) {
-            console.log("Active session found. Redirecting to dashboard.");
             window.location.href = "dashboard.html";
         }
     }
 
     /**
      * Handles the form submission for both steps.
+     * @param {Event} e - The submit event.
      */
     async function handleFormSubmit(e) {
-        console.log("Form submitted or button clicked.");
         e.preventDefault();
         if (!verifiedUsername) {
-            console.log("Calling checkUserAndFork()...");
-            await checkUserAndFork();
+            await handleUsernameSubmission(); // Call the refactored function for step 1
         } else {
-            console.log("Calling checkPassword()...");
             await checkPassword();
         }
     }
@@ -55,8 +53,7 @@ document.addEventListener("DOMContentLoaded", () => {
     /**
      * Starts the demo mode.
      */
-    function startDemoMode() {
-        console.log("Starting demo mode...");
+    function startDemoMode() { // JSDoc: Starts the demo mode, pre-filling username and hash.
         verifiedUsername = "demo-user";
         // SHA-256 hash for "password"
         storedHash = "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8";
@@ -152,9 +149,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     /**
      * Fetches the wizard-card.json from the user's fork.
+     * @param {string} username - The GitHub username.
+     * @returns {Promise<object>} The JSON content of wizard-card.json.
+     * @throws {Error} If the API call fails.
      */
     async function fetchCardData(username) {
-        console.log(`Fetching card data for user: ${username}`);
         const hashUrl = `https://raw.githubusercontent.com/${username}/${CONFIG.REPO_NAME}/main/${CONFIG.CARD_FILE_PATH}`;
         const response = await fetch(hashUrl);
         if (!response.ok) {
@@ -165,13 +164,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
     /**
      * Step 2: Checks the entered password and redirects to the dashboard.
+     * @returns {Promise<void>}
+     * @throws {Error} If password is incorrect.
      */
     async function checkPassword() {
-        console.log("Inside checkPassword()...");
         const password = passwordInput.value;
         if (!password) {
-            console.log("Password is empty. Returning.");
             return;
+            // No message here, as the input field itself should indicate required.
         }
 
         setLoading(true);
@@ -197,9 +197,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     /**
      * Handles API errors.
+     * @param {Response} response - The fetch API response object.
+     * @param {string} defaultMessage - A default error message.
+     * @throws {Error} A more specific error message based on the response status.
      */
     function handleApiError(response, defaultMessage) {
-        console.error(`API Error: ${response.status} - ${defaultMessage}`);
         if (response.status === 403) {
             throw new Error("GitHub API rate limit exceeded. Please try again later.");
         } else if (response.status === 404) {
@@ -212,6 +214,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     /**
      * Sets the loading state.
+     * @param {boolean} isLoading - True to show spinner, false to hide.
      */
     function setLoading(isLoading) {
         if (isLoading) {
@@ -223,6 +226,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     /**
      * Sets the message text and style.
+     * @param {string} msg - The message to display.
+     * @param {string} [type=""] - The type of message (e.g., "success", "error") for styling.
      */
     function setMessage(msg, type = "") {
         message.textContent = msg;
@@ -232,6 +237,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     /**
      * Hashes a string using SHA-256.
+     * @param {string} message - The string to hash.
+     * @returns {Promise<string>} The SHA-256 hash as a hexadecimal string.
      */
     async function sha256(message) {
         const msgBuffer = new TextEncoder().encode(message);
