@@ -7,6 +7,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const usernameInput = document.getElementById("username");
     const passwordInput = document.getElementById("password");
     const spinner = document.getElementById("spinner");
+    const demoBtn = document.getElementById("demo-btn");
 
     // --- State ---
     let verifiedUsername = "";
@@ -17,6 +18,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // --- Event Listeners ---
     loginForm.addEventListener("submit", handleFormSubmit);
+    demoBtn.addEventListener("click", startDemoMode);
 
     // --- Functions ---
 
@@ -39,6 +41,27 @@ document.addEventListener("DOMContentLoaded", () => {
         } else {
             await checkPassword();
         }
+    }
+
+    /**
+     * Starts the demo mode.
+     */
+    function startDemoMode() {
+        verifiedUsername = "demo-user";
+        // SHA-256 hash for "password"
+        storedHash = "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8";
+        usernameInput.value = verifiedUsername;
+        
+        setMessage("Demo mode activated. Please enter the password.", "success");
+        
+        step1.classList.add("fade-out");
+        setTimeout(() => {
+            step1.classList.add("hidden");
+            step1.classList.remove("fade-out");
+            step2.classList.remove("hidden");
+            step2.classList.add("fade-in");
+        }, 500);
+        usernameInput.disabled = true;
     }
 
     /**

@@ -73,6 +73,15 @@ button:hover {
     background-color: #6eefff;
 }
 
+#demo-btn {
+    background-color: #7a4eff;
+    color: #fff;
+}
+
+#demo-btn:hover {
+    background-color: #9c7eff;
+}
+
 #message {
     margin-top: 20px;
     font-size: 0.9em;
