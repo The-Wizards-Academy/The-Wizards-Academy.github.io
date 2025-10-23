@@ -54,29 +54,37 @@ document.addEventListener("DOMContentLoaded", () => {
         const username = usernameInput.value;
         if (!username) return;
 
-        setLoading(true, "Checking initiate status...");
+        setLoading(true);
+        setMessage("Checking initiate status...");
 
         try {
+            setMessage("Searching for user's fork...");
             const userFork = await findUserFork(username);
             if (!userFork) {
                 throw new Error("Initiate not found. Have you forked the Wizards Card repo?");
             }
+            setMessage("Fork found. Looking for wizard-card.json...", "success");
 
             const cardData = await fetchCardData(username);
             if (!cardData.hash) {
                 throw new Error("`wizard-card.json` is malformed. No hash found.");
             }
             storedHash = cardData.hash;
+            setMessage("Found wizard-card.json. Verification complete.", "success");
 
             // Success! Move to step 2
-            setLoading(false, "Initiate found. Please enter your password.", "success");
-            verifiedUsername = username;
-            step1.classList.add("hidden");
-            step2.classList.remove("hidden");
-            usernameInput.disabled = true;
+            setTimeout(() => {
+                setLoading(false);
+                setMessage("Please enter your password.", "success");
+                verifiedUsername = username;
+                step1.classList.add("hidden");
+                step2.classList.remove("hidden");
+                usernameInput.disabled = true;
+            }, 1000);
 
         } catch (error) {
-            setLoading(false, error.message, "error");
+            setLoading(false);
+            setMessage(error.message, "error");
         }
     }
 
@@ -112,19 +120,23 @@ document.addEventListener("DOMContentLoaded", () => {
         const password = passwordInput.value;
         if (!password) return;
 
-        setLoading(true, "Verifying password...");
+        setLoading(true);
+        setMessage("Verifying password...");
 
         try {
             const inputHash = await sha256(password);
             if (inputHash === storedHash) {
                 sessionStorage.setItem("loggedInUser", verifiedUsername);
-                setLoading(false);
-                showContent();
+                setTimeout(() => {
+                    setLoading(false);
+                    showContent();
+                }, 500);
             } else {
                 throw new Error("Password incorrect.");
             }
         } catch (error) {
-            setLoading(false, error.message, "error");
+            setLoading(false);
+            setMessage(error.message, "error");
             passwordInput.value = "";
         }
     }
@@ -160,24 +172,21 @@ document.addEventListener("DOMContentLoaded", () => {
         passwordInput.value = "";
         usernameInput.disabled = false;
         content.classList.add("hidden");
-        loginForm.classList.remove("hidden
+        loginForm.classList.remove("hidden");
         step1.classList.remove("hidden");
         step2.classList.add("hidden");
         setMessage("You have been logged out.");
     }
 
     /**
-     * Sets the loading state and message.
+     * Sets the loading state.
      */
-    function setLoading(isLoading, msg = "", type = "") {
+    function setLoading(isLoading) {
         if (isLoading) {
             spinner.classList.remove("hidden");
-            loginForm.classList.add("hidden");
         } else {
             spinner.classList.add("hidden");
-            loginForm.classList.remove("hidden");
         }
-        setMessage(msg, type);
     }
 
     /**
